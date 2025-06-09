@@ -2,7 +2,11 @@ import { useSignIn, useClerk } from '@clerk/clerk-react';
 import { Bot } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
-export default function WelcomePage() {
+interface WelcomePageProps {
+  setIsGuest: (value: boolean) => void;
+}
+
+export default function WelcomePage({ setIsGuest }: WelcomePageProps) {
   const { openSignIn } = useSignIn();
   const clerk = useClerk();
 
@@ -19,11 +23,9 @@ export default function WelcomePage() {
 
   const handleGuestSignIn = () => {
     toast.promise(
-      clerk.authenticateWithRedirect({
-        strategy: "oauth_google",
-        redirectUrl: "/",
-        redirectUrlComplete: "/",
-        signUpContinue: () => false,
+      new Promise((resolve) => {
+        setIsGuest(true);
+        resolve(true);
       }),
       {
         loading: 'Creating guest session...',

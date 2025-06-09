@@ -7,12 +7,20 @@ import { getAIResponse } from '../api';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
+import { GUEST_USER } from '../config';
 
-export default function ChatApp() {
-  const { user } = useUser();
+interface ChatAppProps {
+  guestUser?: typeof GUEST_USER;
+}
+
+export default function ChatApp({ guestUser }: ChatAppProps) {
+  const { user: clerkUser } = useUser();
+  const user = guestUser || clerkUser;
   const [messages, setMessages] = useState<Message[]>([
     {
-      content: "Hello! I'm your AI assistant. How can I help you today?",
+      content: guestUser 
+        ? "Hello Guest! I'm your AI assistant. Note: Your chat history won't be saved."
+        : "Hello! I'm your AI assistant. How can I help you today?",
       role: 'assistant',
       timestamp: new Date(),
     },
@@ -66,9 +74,15 @@ export default function ChatApp() {
   return (
     <div className="min-h-screen bg-[#212121] flex flex-col">
       <Toaster position="top-center" />
-      <ChatHeader user={user} />
+      <ChatHeader user={user} isGuest={!!guestUser} />
       
       <div className="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col">
+        {guestUser && (
+          <div className="bg-yellow-600/20 text-yellow-200 text-sm p-2 rounded mb-4 text-center">
+            You're using a guest account. Your chat history won't be saved.
+          </div>
+        )}
+        
         <MessageList 
           messages={messages} 
           isLoading={isLoading} 
