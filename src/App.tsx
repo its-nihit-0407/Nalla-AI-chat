@@ -1,15 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, RefreshCw } from 'lucide-react';
-import { GoogleGenerativeAI,HarmCategory,HarmBlockThreshold } from "@google/generative-ai";
-// import 'dotenv/config';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// const key = process.env.GOOGLE_GENERATIVE_AI_API as string
 const key = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API;
-
-// if (!key) {
-//   throw new Error("Missing API key in environment variables");
-// }
-// console.log("API Key:", key);
 
 const genAI = new GoogleGenerativeAI(key);
 const model = genAI.getGenerativeModel({
@@ -27,13 +20,11 @@ const generationConfig = {
 async function run(inpt: string) {
   const chatSession = model.startChat({
     generationConfig,
-    history: [
-    ],
+    history: [],
   });
 
   const result = await chatSession.sendMessage(inpt);
   let response = result.response.text();
-
   return response;
 }
 
@@ -42,7 +33,6 @@ interface Message {
   role: 'assistant' | 'user';
   timestamp: Date;
 }
-
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([
@@ -54,49 +44,42 @@ function App() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const getAIResponse = async (userInput: string) => {
-    // Simulate network delay for more natural feeling
     await new Promise(resolve => setTimeout(resolve, 500));
-
     const input = userInput.toLowerCase();
     
-    // Simple pattern matching for responses
-    if (input == ('hello') || input == ('hi')) {
+    // Simple pattern matching responses
+    if (input === 'hello' || input === 'hi') {
       return "Hello! It's great to hear from you. How can I assist you today?";
     }
-    
     if (input.includes('how are you')) {
       return "I'm functioning well, thank you for asking! How can I help you?";
     }
-    
     if (input.includes('weather')) {
       return "I'm sorry, I don't have access to real-time weather data. You might want to check a weather service for that information.";
     }
-    
     if (input.includes('help') || input.includes('can you')) {
       return "I'm a simple AI assistant. I can engage in conversation and try to help answer your questions. What would you like to know?";
     }
-    
     if (input.includes('thank')) {
       return "You're welcome! Let me know if there's anything else I can help with.";
     }
-    
     if (input.includes('bye') || input.includes('goodbye')) {
       return "Goodbye! Have a great day! Feel free to come back if you need anything else.";
     }
 
-    let data = run(userInput);
-    // const prompt = userInput;
-    // const result = await model.generateContent(prompt);
-    
-    // console.log(response)
-    // Default response for unmatched patterns
-    // return "I understand you're saying something about '" + 
-    //        userInput.slice(0, 30) + 
-    //        "'. Could you rephrase that or ask something specific?";
-
-    return data;
+    return await run(userInput);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -144,27 +127,27 @@ function App() {
       </header>
 
       {/* Chat Container */}
-      <div className="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col overflow-auto">
-        <div className="flex-1 bg-[#0f0f0f67] rounded-lg shadow-lg p-4 mb-4 overflow-y-auto min-h-[500px]">
-          <div className="space-y-4 ">
+      <div className="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col">
+        <div className="flex-1 bg-[#0f0f0f67] rounded-lg shadow-lg p-4 mb-4 overflow-y-auto min-h-[500px] max-h-[calc(100vh-200px)] scrollbar">
+          <div className="space-y-4">
             {messages.map((message, index) => (
               <div
                 key={index}
-                className={`flex gap-3  ${
+                className={`flex gap-3 ${
                   message.role === 'user' ? 'justify-end' : 'justify-start'
                 }`}
               >
                 {message.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full bg-[#0f0f0f67] flex items-center justify-center">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#0f0f0f67] flex items-center justify-center">
                     <Bot className="w-5 h-5 text-blue-600" />
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-lg p-3  ${
+                  className={`max-w-[80%] rounded-lg p-3 ${
                     message.role === 'user'
                       ? 'bg-blue-600 text-white'
                       : 'bg-[#0f0f0f67] text-white'
-                  }`}
+                  } break-words`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   <span className="text-xs opacity-70 mt-1 block">
@@ -172,7 +155,7 @@ function App() {
                   </span>
                 </div>
                 {message.role === 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
                     <User className="w-5 h-5 text-white" />
                   </div>
                 )}
@@ -184,11 +167,12 @@ function App() {
                 <span className="text-sm">Brain is thinking...</span>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        <form onSubmit={handleSubmit} className="flex gap-2 mt-auto">
           <input
             type="text"
             value={input}
@@ -206,6 +190,24 @@ function App() {
           </button>
         </form>
       </div>
+
+      {/* Custom scrollbar styles */}
+      <style>{`
+        .scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .scrollbar::-webkit-scrollbar-track {
+          background: #0f0f0f67;
+          border-radius: 4px;
+        }
+        .scrollbar::-webkit-scrollbar-thumb {
+          background: #3b82f6;
+          border-radius: 4px;
+        }
+        .scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #2563eb;
+        }
+      `}</style>
     </div>
   );
 }
